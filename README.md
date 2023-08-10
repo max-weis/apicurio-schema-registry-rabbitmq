@@ -1,0 +1,1 @@
+# apicurio-schema-registry-rabbitmq
