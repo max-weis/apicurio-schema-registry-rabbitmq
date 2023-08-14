@@ -1,46 +1,75 @@
 package main
 
 import (
-	"github.com/max-weis/apicurio-schema-registry-rabbitmq/avro"
-	"github.com/max-weis/apicurio-schema-registry-rabbitmq/broker"
+	"context"
+	"encoding/json"
+	"flag"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/broker"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/schema"
+	"github.com/streadway/amqp"
 	"log"
-	"math/rand"
-	"time"
 )
 
-const (
-	group      = "de.adesso.ba-demo.registry"
-	artifactId = "user"
+var (
+	rabbit     string
+	queue      string
+	registry   string
+	globalId   string
+	payload    string
+	validation bool
 )
 
 func main() {
-	const rabbitMQURL = "amqp://localhost:5672/"
-	const routingKey = "user.queue"
+	ctx := context.Background()
 
-	producer, err := broker.NewProducer(rabbitMQURL)
+	producer, err := broker.NewProducer(rabbit)
 	if err != nil {
 		log.Fatalf("Error creating producer: %v", err)
 	}
 	defer producer.Close()
 
-	for {
-		schema, err := avro.GetSchema(group, artifactId)
-		if err != nil {
-			log.Fatalf("Error parsing Avro schema: %v", err)
-		}
-
-		user := map[string]interface{}{"name": "John", "age": rand.Intn(120)}
-
-		data, err := avro.ValidateMessage(user, schema)
-		if err != nil {
-			log.Fatalf("Error validating message: %v", err)
-		}
-
-		if err := producer.SendToRabbitMQ(routingKey, data, broker.BuildHeader(group, artifactId)); err != nil {
-			log.Fatalf("Error sending message to RabbitMQ: %v", err)
-		}
-
-		log.Printf("User sent successfully: %v", user)
-		time.Sleep(3 * time.Second)
+	var user map[string]any
+	if err := json.Unmarshal([]byte(payload), &user); err != nil {
+		log.Fatalf("Error JSON could not be parsed: %s", err)
 	}
+
+	if validation {
+		client := schema.NewClient(registry)
+		s, err := client.GetSchemaByGlobalId(globalId)
+		if err != nil {
+			log.Fatalf("Error loading schema: %v", err)
+		}
+
+		validator := schema.NewAvroValidator(s)
+		ok, err := validator.Validate(ctx, user)
+		if err != nil {
+			log.Fatalf("Error validating schema: %v", err)
+		}
+
+		if !ok {
+			log.Fatalf("Schema is not valid: %s", payload)
+		}
+	}
+
+	bytes, err := json.Marshal(user)
+	if err != nil {
+		log.Fatalf("Error JSON could not be created: %v", err)
+	}
+
+	header := amqp.Table{"schema": globalId}
+	if err := producer.SendToRabbitMQ(queue, bytes, header); err != nil {
+		log.Fatalf("Error event could not be send: %s", err)
+	}
+
+	log.Printf("User was send successfully: %v", user)
+}
+
+func init() {
+	flag.StringVar(&rabbit, "rabbit", "amqp://localhost:5672/", "Der Host vom rabbitMQ Server")
+	flag.StringVar(&queue, "queue", "user", "Die Queue auf dem die Ereignisse veröffentlicht werden sollen")
+	flag.StringVar(&registry, "registry", "http://localhost:8080", "Der Host vom apicurio Server")
+	flag.StringVar(&globalId, "globalId", "1", "Die ID der Schema")
+	flag.StringVar(&payload, "payload", `{"name":"Max","age":24}`, "Das Ereignis, welches gesendet werden soll")
+	flag.BoolVar(&validation, "validation", true, "Schaltet die Validierung aus und ein")
+	flag.Parse()
 }
