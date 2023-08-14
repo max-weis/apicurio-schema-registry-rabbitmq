@@ -1,22 +1,23 @@
 package main
 
 import (
-	"github.com/max-weis/apicurio-schema-registry-rabbitmq/avro"
+	"context"
+	"encoding/json"
+	"flag"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/schema"
 	"github.com/streadway/amqp"
 	"log"
 )
 
-const (
-	rabbitMQURL = "amqp://localhost:5672/"
-	routingKey  = "user.queue"
-
-	group      = "de.adesso.ba-demo.registry"
-	artifactId = "user"
+var (
+	rabbit   string
+	queue    string
+	registry string
 )
 
 func main() {
 	// Establish a connection to RabbitMQ
-	conn, err := amqp.Dial(rabbitMQURL)
+	conn, err := amqp.Dial(rabbit)
 	if err != nil {
 		log.Fatalf("Failed to connect to RabbitMQ: %v", err)
 	}
@@ -30,7 +31,7 @@ func main() {
 	defer ch.Close()
 
 	msgs, err := ch.Consume(
-		routingKey,
+		queue,
 		"",
 		true,
 		false,
@@ -42,19 +43,37 @@ func main() {
 		log.Fatalf("Failed to register a consumer: %v", err)
 	}
 
+	client := schema.NewClient(registry)
+
 	for d := range msgs {
-		schema, err := avro.GetSchema(group, artifactId)
+		ctx := context.Background()
+		s, err := client.GetSchemaByGlobalId(d.Headers["schema"].(string))
 		if err != nil {
-			log.Printf("Failed to get schema by ID: %v", err)
-			continue
+			log.Fatalf("Failed to get schema: %v", err)
 		}
 
-		message, err := avro.DecodeMessage(d.Body, schema)
-		if err != nil {
-			log.Printf("Failed to decode message: %v", err)
-			continue
+		var user map[string]any
+		if err = json.Unmarshal(d.Body, &user); err != nil {
+			log.Fatalf("Failed to unmarshal json: %v", err)
 		}
 
-		log.Printf("Received message: %v", message)
+		validator := schema.NewAvroValidator(s)
+		ok, err := validator.Validate(ctx, user)
+		if err != nil {
+			log.Printf("Failed to validate schema: %v: %v", user, err)
+		}
+
+		if !ok {
+			log.Println("Message could not be validated")
+		}
+
+		log.Printf("Received message: %#v", user)
 	}
+}
+
+func init() {
+	flag.StringVar(&rabbit, "rabbit", "amqp://localhost:5672/", "Der Host vom rabbitMQ Server")
+	flag.StringVar(&queue, "queue", "user", "Die Queue auf dem die Ereignisse veröffentlicht werden sollen")
+	flag.StringVar(&registry, "registry", "http://localhost:8080", "Der Host vom apicurio Server")
+	flag.Parse()
 }
