@@ -20,6 +20,7 @@ func NewClient(host string) Client {
 	}
 }
 
+// GetSchemaByGlobalId retrieves the artifact with the given id.
 func (c Client) GetSchemaByGlobalId(id string) (string, error) {
 	resp, err := http.Get(fmt.Sprintf("%s/%s/ids/globalIds/%s", c.host, c.basePath, id))
 	if err != nil {
@@ -44,24 +45,24 @@ func NewAvroValidator(schema string) Validator {
 	}
 }
 
-func (av AvroValidator) Validate(ctx context.Context, obj map[string]any) (bool, error) {
+func (av AvroValidator) Validate(ctx context.Context, obj map[string]any) error {
 	// Create a Codec for the Avro schema
 	codec, err := goavro.NewCodec(av.schema)
 	if err != nil {
-		return false, fmt.Errorf("failed to create codec: %w", err)
+		return fmt.Errorf("failed to create codec: %w", err)
 	}
 
 	// Convert the map into Avro binary format
 	binary, err := codec.BinaryFromNative(nil, obj)
 	if err != nil {
-		return false, fmt.Errorf("failed to encode to binary: %w", err)
+		return fmt.Errorf("failed to encode to binary: %w", err)
 	}
 
 	// Convert back from binary to Go native data structure
 	_, _, err = codec.NativeFromBinary(binary)
 	if err != nil {
-		return false, fmt.Errorf("failed to decode from binary: %w", err)
+		return fmt.Errorf("failed to decode from binary: %w", err)
 	}
 
-	return true, nil
+	return nil
 }

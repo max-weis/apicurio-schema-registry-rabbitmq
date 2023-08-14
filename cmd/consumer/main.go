@@ -30,23 +30,18 @@ func main() {
 	}
 	defer ch.Close()
 
-	msgs, err := ch.Consume(
-		queue,
-		"",
-		true,
-		false,
-		false,
-		false,
-		nil,
-	)
+	msgs, err := ch.Consume(queue, "", true, false, false, false, nil)
 	if err != nil {
 		log.Fatalf("Failed to register a consumer: %v", err)
 	}
 
 	client := schema.NewClient(registry)
 
+	log.Printf("consuming messages from queue: %s", queue)
+
 	for d := range msgs {
 		ctx := context.Background()
+
 		s, err := client.GetSchemaByGlobalId(d.Headers["schema"].(string))
 		if err != nil {
 			log.Fatalf("Failed to get schema: %v", err)
@@ -58,13 +53,8 @@ func main() {
 		}
 
 		validator := schema.NewAvroValidator(s)
-		ok, err := validator.Validate(ctx, user)
-		if err != nil {
-			log.Printf("Failed to validate schema: %v: %v", user, err)
-		}
-
-		if !ok {
-			log.Println("Message could not be validated")
+		if err := validator.Validate(ctx, user); err != nil {
+			log.Fatalf("Failed to validate schema: %v: %v", user, err)
 		}
 
 		log.Printf("Received message: %#v", user)

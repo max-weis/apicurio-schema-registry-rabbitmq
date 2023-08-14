@@ -41,13 +41,8 @@ func main() {
 		}
 
 		validator := schema.NewAvroValidator(s)
-		ok, err := validator.Validate(ctx, user)
-		if err != nil {
+		if err := validator.Validate(ctx, user); err != nil {
 			log.Fatalf("Error validating schema: %v", err)
-		}
-
-		if !ok {
-			log.Fatalf("Schema is not valid: %s", payload)
 		}
 	}
 
