@@ -1,0 +1,19 @@
+@startuml
+actor       Admin       as nutzer
+database "Schema Registry" as schemaregistry
+participant Publisher as publisher
+queue       Queue       as queue
+participant Subscriber as subscriber
+
+nutzer -> schemaregistry : Spielt Schema ein
+
+publisher -> schemaregistry : Lade Schema
+publisher -> publisher : Validiere Ereignis
+publisher -> queue : veröffentliche Ereignis
+
+subscriber -> queue : konsumiere Ereignis
+
+subscriber -> schemaregistry : Lade Schema
+subscriber -> subscriber : Validiere Ereignis
+
+@enduml

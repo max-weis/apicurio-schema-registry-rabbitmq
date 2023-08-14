@@ -1,0 +1,34 @@
+asyncapi: 2.1.0
+info:
+  title: Avro User Schema
+  version: 1.0.0
+channels:
+  user.queue:
+    description: User data queue
+    subscribe:
+      operationId: consumeUserData
+      message:
+        name: user
+        payload:
+          $ref: '#/components/schemas/User'
+    publish:
+      operationId: produceUserData
+      message:
+        name: user
+        payload:
+          $ref: '#/components/schemas/User'
+components:
+  schemas:
+    User:
+      type: object
+      properties:
+        name:
+          type: string
+          description: User's name
+          examples:
+            - Max
+        age:
+          type: integer
+          description: User's age
+          examples:
+            - 25

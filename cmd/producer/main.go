@@ -1,15 +1,17 @@
 package main
 
 import (
-	"github.com/max-weis/apicurio-schema-registry-rabbitmq/avro"
-	"github.com/max-weis/apicurio-schema-registry-rabbitmq/broker"
+	"context"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/broker"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/registry"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/validate"
 	"log"
 	"math/rand"
 	"time"
 )
 
 const (
-	group      = "de.adesso.ba-demo.registry"
+	group      = "default"
 	artifactId = "user"
 )
 
@@ -23,20 +25,27 @@ func main() {
 	}
 	defer producer.Close()
 
+	client := registry.NewClient("localhost:8080")
+
+	ctx := context.Background()
 	for {
-		schema, err := avro.GetSchema(group, artifactId)
+		schema, err := client.GetLatestArtifact(ctx, group, artifactId)
 		if err != nil {
 			log.Fatalf("Error parsing Avro schema: %v", err)
 		}
 
 		user := map[string]interface{}{"name": "John", "age": rand.Intn(120)}
 
-		data, err := avro.ValidateMessage(user, schema)
+		validator := validate.NewValidator(schema)
+		ok, err := validator.Validate(user)
 		if err != nil {
 			log.Fatalf("Error validating message: %v", err)
 		}
+		if !ok {
+			log.Fatalf("Nachricht entspricht nicht dem Format")
+		}
 
-		if err := producer.SendToRabbitMQ(routingKey, data, broker.BuildHeader(group, artifactId)); err != nil {
+		if err := producer.SendToRabbitMQ(routingKey, user, broker.BuildHeader(group, artifactId)); err != nil {
 			log.Fatalf("Error sending message to RabbitMQ: %v", err)
 		}
 
