@@ -6,6 +6,7 @@ import (
 	"flag"
 	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/broker"
 	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/schema"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/validator"
 	"github.com/streadway/amqp"
 	"log"
 )
@@ -40,8 +41,8 @@ func main() {
 			log.Fatalf("Error loading schema: %v", err)
 		}
 
-		validator := schema.NewAsyncAPIValidator(s, "$.components.schemas.user")
-		if err := validator.Validate(ctx, user); err != nil {
+		v := validator.NewAsyncAPIValidator(s, "$.components.schemas.user")
+		if err := v.Validate(ctx, user); err != nil {
 			log.Fatalf("Error validating schema: %v", err)
 		}
 	}

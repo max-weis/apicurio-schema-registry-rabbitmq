@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"flag"
 	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/schema"
+	"github.com/max-weis/apicurio-schema-registry-rabbitmq/pkg/validator"
 	"github.com/streadway/amqp"
 	"log"
 )
@@ -52,8 +53,8 @@ func main() {
 			log.Fatalf("Failed to unmarshal json: %v", err)
 		}
 
-		validator := schema.NewAsyncAPIValidator(s, "$.components.schemas.user")
-		if err := validator.Validate(ctx, user); err != nil {
+		v := validator.NewAsyncAPIValidator(s, "$.components.schemas.user")
+		if err := v.Validate(ctx, user); err != nil {
 			log.Fatalf("Failed to validate schema: %v: %v", user, err)
 		}
 
