@@ -2,7 +2,7 @@
   "asyncapi": "2.1.0",
   "info": {
     "title": "Avro User Schema",
-    "version": "1.0.0"
+    "version": "2.0.0"
   },
   "channels": {
     "user.queue": {
@@ -33,12 +33,19 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "User's name"
+            "type": "array",
+            "description": "User's name",
+            "items": {
+              "type": "string"
+            }
           },
           "age": {
             "type": "integer",
             "description": "User's age"
+          },
+          "occupation": {
+            "type": "string",
+            "description": "User's occupation"
           }
         },
         "required": [
