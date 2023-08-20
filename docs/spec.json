@@ -1,0 +1,47 @@
+{
+  "asyncapi": "2.1.0",
+  "info": {
+    "title": "Avro User Schema",
+    "version": "1.0.0"
+  },
+  "channels": {
+    "user.queue": {
+      "description": "User data queue",
+      "subscribe": {
+        "operationId": "consumeUserData",
+        "message": {
+          "name": "user",
+          "payload": {
+            "$ref": "#/components/schemas/user"
+          }
+        }
+      },
+      "publish": {
+        "operationId": "produceUserData",
+        "message": {
+          "name": "user",
+          "payload": {
+            "$ref": "#/components/schemas/user"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "user": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "User's name"
+          },
+          "age": {
+            "type": "integer",
+            "description": "User's age"
+          }
+        }
+      }
+    }
+  }
+}

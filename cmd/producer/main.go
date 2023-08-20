@@ -40,7 +40,7 @@ func main() {
 			log.Fatalf("Error loading schema: %v", err)
 		}
 
-		validator := schema.NewAvroValidator(s)
+		validator := schema.NewAsyncAPIValidator(s, "$.components.schemas.user")
 		if err := validator.Validate(ctx, user); err != nil {
 			log.Fatalf("Error validating schema: %v", err)
 		}

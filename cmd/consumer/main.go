@@ -52,7 +52,7 @@ func main() {
 			log.Fatalf("Failed to unmarshal json: %v", err)
 		}
 
-		validator := schema.NewAvroValidator(s)
+		validator := schema.NewAsyncAPIValidator(s, "$.components.schemas.user")
 		if err := validator.Validate(ctx, user); err != nil {
 			log.Fatalf("Failed to validate schema: %v: %v", user, err)
 		}
